@@ -1,95 +1,121 @@
-#ifndef SENSOR_LED_H
-#define SENSOR_LED_H
+#ifndef STATUS_LED_H
+#define STATUS_LED_H
 
 #include "Particle.h"
-#include "pins.h"
-#include "globals.h"
+#include "VDW_LEDStatus.h"
 
-enum Sensor_LED_Priority{
-    SensorLED_Priority_Low = 1,
-    SensorLED_Priority_Med = 4, 
-    SensorLED_Priority_High = 7,
-    SensorLED_Priority_Critical = 10, 
-};
-
-enum Sensor_LED_Color{
-    SensorLED_OFF, //000 --> not sure why this would every be used, led should be off if all statuses are inactive
-    SensorLED_Blue, //001
-    SensorLED_Green, //010
-    SensorLED_Cyan, //011
-    SensorLED_Red, //100
-    SensorLED_Magenta, //101
-    SensorLED_Yellow, //110
-    SensorLED_White, //111
-};
-
-class SensorLED{
+template<size_t NUMBER_OF_STATUSES = 5>
+class VDW_StatusLEDTarget{
+    friend class VDW_LEDStatus;
     public:
-        SensorLED(void (*writePin)(uint8_t, bool), uint8_t redPin, uint8_t greenPin, uint8_t bluePin)
+        VDW_StatusLEDTarget(uint8_t redPin, uint8_t greenPin, uint8_t bluePin, bool activeLow = false)
+            :   _redPin(redPin)
+            ,   _greenPin(greenPin)
+            ,   _bluePin(bluePin)
+            ,   _ledOff(activeLow)
+            {}
+        VDW_StatusLEDTarget(void (*writePin)(uint8_t, bool), uint8_t redPin, uint8_t greenPin, uint8_t bluePin, bool activeLow = false)
             :   _writePin(writePin)
             ,   _redPin(redPin)
             ,   _greenPin(greenPin)
             ,   _bluePin(bluePin)
+            ,   _ledOff(activeLow)
+            ,   _externalIO(true)
             {}
 
-        // creates a new status with name (max 16 characters), color, blinkRate, number of blinks before being set inactive, and priority
-        //  returns false and does not set status if name is already in use
-        bool createStatus(const char *name, Sensor_LED_Color color);
-        bool createStatus(const char *name, Sensor_LED_Color color, uint16_t blinkRate, uint8_t numBlinks = 0);
-        bool createStatus(const char *name, Sensor_LED_Color color, Sensor_LED_Priority priority, uint16_t blinkRate = 0, uint8_t numBlinks = 0);
-
-        // turns the status given by name on or off, returns 0 if name is not found in status list
-        bool setStatus(const char *name, bool isActive);
-
-        // changes the priority level (higher is more important) of the named status, returns 0 if name is not found in status list
-        bool setPriority(const char *name, uint8_t priority);
-
-        // makes the named status the highest priority in the list and sets it active, then calls update to display the status immediately, returns 0 if name is not found in status list
-        //  WARNING: should not be used except for absolutely critical statuses that will be active for short durations or just before a crash, reset or power-down would occur
-        bool displayNow(const char *name);
-
         // make sure all pins are off, pin modes should be setup prior to calling init
-        void init();
+        void init(){
+            if(_externalIO){
+                _writePin(_redPin, _ledOff);
+                _writePin(_greenPin, _ledOff);
+                _writePin(_bluePin, _ledOff);
+            } else {
+                pinMode(_redPin, OUTPUT);
+                pinMode(_greenPin, OUTPUT);
+                pinMode(_bluePin, OUTPUT);
+                digitalWrite(_redPin, _ledOff);
+                digitalWrite(_greenPin, _ledOff;
+                digitalWrite(_bluePin, _ledOff);
+            }
+        }
 
         // display highest priority active status, run blink patterns and count number of blinks, reset active status if number of blinks exceeds set number
-        void update();
+        void update(){
+            // find the highest priority, active status
+            uint8_t highestActivePriority = 0;
+            uint8_t index = numStatuses + 1;
+            for(uint8_t i=0; i<numStatuses; i++){
+                if(_LEDstatuses[i].active && _LEDstatuses[i].priority > highestActivePriority){
+                    highestActivePriority = _LEDstatuses[i].priority;
+                    index = i;
+                }
+            }
+
+            // if all statuses inactive, turn LED off and exit update();
+            if(index > numStatuses){
+                _writePin(_redPin, LOW);
+                _writePin(_greenPin, LOW);
+                _writePin(_bluePin, LOW);
+                return;
+            }
+
+            // if a new status is active, reset _blinkState
+            if(index != _lastDisplayedIndex) _blinkState = false;
+            _lastDisplayedIndex = index;
+
+            // if solid color (blinkRate == 0) or blink state is ON turn the LED to the specific color
+            if(_LEDstatuses[index].blinkRate == 0 || _blinkState == true){
+                bool redDir     = _LEDstatuses[index].color >> 2 & 0x01;
+                bool greenDir   = _LEDstatuses[index].color >> 1 & 0x01;
+                bool blueDir    = _LEDstatuses[index].color & 0x01;
+
+                _writePin(_redPin, redDir);
+                _writePin(_greenPin, greenDir);
+                _writePin(_bluePin, blueDir);
+            } else {
+                _writePin(_redPin, LOW);
+                _writePin(_greenPin, LOW);
+                _writePin(_bluePin, LOW);
+            }
+            
+            // exit update() if solid color
+            if(_LEDstatuses[index].blinkRate == 0) return;
+
+            // determine if a blink state change is due
+            if(millis() - _lastBlinkTransition > _LEDstatuses[index].blinkRate){
+                _lastBlinkTransition = millis();
+                _blinkState = !_blinkState;
+            }
+
+            // exit update() if blink should go on forever
+            if(_LEDstatuses[index].numBlinks == 0) return;
+
+            // increment blinksCompleted when blink cycle is completed, detected by falling edge of blink
+            Serial.printlnf("color: %d,\n\t_blinkState: %d\n\t_previousBlinkState: %d\n", _LEDstatuses[index].color, _blinkState, _previousBlinkState);
+            delay(50);
+            if((_blinkState != _previousBlinkState) && (_previousBlinkState == 1)) _LEDstatuses[index].blinksCompleted += 1;
+            _previousBlinkState = _blinkState;
+
+            // if status has blinked numBlinks (and numBlinks was set), set the status inactive
+            if(_LEDstatuses[index].blinksCompleted >= _LEDstatuses[index].numBlinks) _LEDstatuses[index].active = false;
+        }
+
     private:
+        bool _externalIO = false;
+        bool _ledOff = false;
         void (*_writePin)(uint8_t, bool) = NULL;
         uint8_t _redPin = 0;
         uint8_t _greenPin = 0;
         uint8_t _bluePin = 0;
-        struct ledStatus{
-            char name[16] = ""; // name of the status, will be matched (strcmp) when setStatus() is called
-            bool active = false; // active status means the color and blink rate will be displayed if it's highest priority
-            uint8_t color = 0; // non-hex, last three bits represent red, green, blue ex. (0b00000101) is red and blue ON, green OFF
-            uint16_t blinkRate = 0; // time between blinks, duty cycle is 50%, 0 is constant on
-            uint8_t numBlinks = 0; // number of blinks before active is set to false, 0 is infinate
-            uint8_t blinksCompleted = 0; // the number of times the status has blinked since setStatus() was called
-            uint8_t priority = 0; // active ledStatus with highest priority will be the one displayed, if multiple are same priority, lowest index will be displayed
-        };
-        static const uint8_t numStatuses = 10;
-        ledStatus _LEDstatuses[numStatuses]; // up to 10 statuses can be created for the led, if more than 10 are created, they will ovewrite, starting with the first
+        
+        uint32_t _numStatuses = NUMBER_OF_STATUSES;
+        VDW_LEDStatus _LEDStatuses[NUMBER_OF_STATUSES];
+
         uint8_t _statusIndex = 0; // which status should be written to next when createStatus() is called
         uint8_t _lastDisplayedIndex = numStatuses+1;
         bool _blinkState = true; // true if LED is on during blink
         bool _previousBlinkState = false; // blink state for previous update() call, used to determine, rising edges for incrementing blink counts
         uint32_t _lastBlinkTransition = 0; // time in milliseconds of the last blink state change
-
-        // returns the index of the matching LED status, returns -1 if no match
-        int8_t findStatus(const char *name);
-        void printStatus(uint8_t index){
-            Serial.printlnf("Status %d",index);
-            Serial.printlnf("\tName: %s", _LEDstatuses[index].name);
-            Serial.printlnf("\tActive: %d", _LEDstatuses[index].active);
-            Serial.printlnf("\tColor: %d", _LEDstatuses[index].color);
-            Serial.printlnf("\tBlink Rate: %d", _LEDstatuses[index].blinkRate);
-            Serial.printlnf("\tNum Blinks: %d", _LEDstatuses[index].numBlinks);
-            Serial.printlnf("\tBlinks Completed: %d", _LEDstatuses[index].blinksCompleted);
-            Serial.printlnf("\tPriority: %d", _LEDstatuses[index].priority);
-        }
 };
-
-extern SensorLED RED_SensorLED;
-extern SensorLED BLUE_SensorLED;
 
 #endif
