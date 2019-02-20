@@ -1,56 +1,49 @@
 #include "VDW_LEDStatus.h"
+#include "VDW_StatusLEDTarget.h"
 
-int8_t VDW_LEDStatus::findStatus(const char *name){
-    int8_t returnVal = -1;
-    for(uint8_t i=0; i<numStatuses; i++){
-        if(strncmp(name, _LEDstatuses[i].name, 16) == 0){
-            returnVal = i;
-        }
-    }
-    return returnVal;
+
+
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color){
+    construct(TargetLED, color, StatusLED_Priority_Low, StatusLED_Pattern_Solid, 0, 0);
+}
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Pattern pattern, StatusLED_Speed speed, uint32_t numBlinks){
+    construct(TargetLED, color, StatusLED_Priority_Low, pattern, speed, numBlinks);
+}
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Pattern pattern, uint32_t blinkRate, uint32_t numBlinks){
+    construct(TargetLED, color, StatusLED_Priority_Low, pattern, blinkRate, numBlinks);
+}
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Priority priority){
+    construct(TargetLED, color, priority, StatusLED_Pattern_Solid, 0, 0);
+}
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Priority priority, StatusLED_Pattern pattern, StatusLED_Speed speed, uint32_t numBlinks){
+    construct(TargetLED, color, priority, pattern, speed, numBlinks);
+}
+VDW_LEDStatus::VDW_LEDStatus(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Priority priority, StatusLED_Pattern pattern, uint32_t blinkRate, uint32_t numBlinks){
+    construct(TargetLED, color, priority, pattern, blinkRate, numBlinks);
 }
 
-bool VDW_LEDStatus::createStatus(const char *name, Sensor_LED_Color color){
-    return createStatus(name, color, VDW_LEDStatus_Priority_Low, 0, 0);
-}
-bool VDW_LEDStatus::createStatus(const char *name, Sensor_LED_Color color, uint16_t blinkRate, uint8_t numBlinks){
-    return createStatus(name, color, VDW_LEDStatus_Priority_Low, blinkRate, numBlinks);
-}
-bool VDW_LEDStatus::createStatus(const char *name, Sensor_LED_Color color, Sensor_LED_Priority priority, uint16_t blinkRate, uint8_t numBlinks){
-    Serial.printlnf("Create Status:\n\tName: %s\n\tColor: %d", name, color);
-    // check to make sure name isn't already used
-    if(findStatus(name) != -1) return false;
+void VDW_LEDStatus::construct(VDW_StatusLEDTarget *TargetLED, StatusLED_Color color, StatusLED_Priority priority, StatusLED_Pattern pattern, uint32_t blinkRate, uint32_t numBlinks){
+    _TargetLED = TargetLED;
+    _color = color;
+    _priority = priority;
+    _pattern = pattern;
+    if(_pattern != StatusLED_Pattern_Solid) _blinkRate = blinkRate;
+    else _blinkRate = 0;
+    _numBlinks = numBlinks;
 
-    strncpy(_LEDstatuses[_statusIndex].name, name, 16);
-    _LEDstatuses[_statusIndex].active = false;
-    _LEDstatuses[_statusIndex].color = color;
-    _LEDstatuses[_statusIndex].blinkRate = blinkRate;
-    _LEDstatuses[_statusIndex].numBlinks = numBlinks;
-    _LEDstatuses[_statusIndex].blinksCompleted = 0;
-    _LEDstatuses[_statusIndex].priority = priority;
-    printStatus(_statusIndex);
-
-    // increment the status index, reset if greater than list size
-    _statusIndex ++;
-    if(_statusIndex >= numStatuses) _statusIndex = 0;
-
-    return true;
+    _nextStatus = _TargetLED->addStatus(this);
 }
 
 // makes the named status the highest priority in the list and sets it active, then calls update, returns 0 if name is not found in status list
 //  WARNING: should not be used except for absolutely critical statuses that will be active for short durations or just before a crash, reset or power-down would occur
 bool VDW_LEDStatus::displayNow(){
-    // find the highest priority in any status
-    uint8_t highestPriority = 0;
-    for(uint8_t i=0; i<numStatuses; i++){
-        if(_LEDstatuses[i].priority > highestPriority) highestPriority = _LEDstatuses[i].priority;
-    }
+    // remove the status from the current location in the list and insert it at the beginning of the list
+    _nextStatus = _TargetLED->removeStatus(this);
+    _nextStatus = _TargetLED->pushBack(this);
 
     // make the status active, and  
-    _LEDstatuses[(uint8_t)statusIndex].active = true;
-    _LEDstatuses[(uint8_t)statusIndex].blinksCompleted = 0;
-    _LEDstatuses[(uint8_t)statusIndex].priority = highestPriority + 1;
-    update();
+    setStatus(Active);
+    _TargetLED->update();
     
     return true;
 }
