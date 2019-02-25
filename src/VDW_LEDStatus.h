@@ -2,7 +2,6 @@
 #define LED_STATUS_H
 
 #include "Particle.h"
-#include <stdio.h>
 
 enum StatusLED_Color {
     StatusLED_Color_OFF, //000 --> not sure why this would every be used, led should be off if all statuses are inactive
