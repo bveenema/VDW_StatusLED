@@ -43,7 +43,7 @@ class VDW_StatusLEDTarget{
         void update();
 
     private:  
-        // Constructor settings
+        // Constructor Settings
         void (*_writePin)(uint8_t, bool);
         uint8_t _redPin;
         uint8_t _greenPin;
