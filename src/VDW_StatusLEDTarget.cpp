@@ -12,10 +12,10 @@ void VDW_StatusLEDTarget::init(){
     _writePin(_bluePin, _ledOff);
 }
 
-StatusPtr VDW_StatusLEDTarget::addStatus(StatusPtr status){
+LEDStatusPtr VDW_StatusLEDTarget::addStatus(LEDStatusPtr status){
     // Insert Elements sorted by priority, highest to lowest
-    StatusPtr nStatus = _headStatusList; // head is NULL if no elements in list
-    StatusPtr pStatus = NULL;
+    LEDStatusPtr nStatus = _headStatusList; // head is NULL if no elements in list
+    LEDStatusPtr pStatus = NULL;
     while(nStatus){
         if(nStatus->_priority <= status->_priority) break; // find the element where the priority is less than or equal to the new element
         pStatus = nStatus; // record the status that will be just before the status
@@ -33,20 +33,20 @@ StatusPtr VDW_StatusLEDTarget::addStatus(StatusPtr status){
     return nStatus; // will be NULL if first element or last element
 }
 
-StatusPtr VDW_StatusLEDTarget::pushBack(StatusPtr status){
+LEDStatusPtr VDW_StatusLEDTarget::pushBack(LEDStatusPtr status){
     // insert the incoming element to the beginning of the list
-    StatusPtr tempStatus = _headStatusList;
+    LEDStatusPtr tempStatus = _headStatusList;
     _headStatusList = status;
 
     return tempStatus;
 }
 
-StatusPtr VDW_StatusLEDTarget::removeStatus(StatusPtr status){
+LEDStatusPtr VDW_StatusLEDTarget::removeStatus(LEDStatusPtr status){
     Serial.println("Before Removal");
     printStatuses();
     // find the elements just before and after the incoming element
-    StatusPtr nStatus = _headStatusList;
-    StatusPtr pStatus = NULL;
+    LEDStatusPtr nStatus = _headStatusList;
+    LEDStatusPtr pStatus = NULL;
     while(nStatus){
         if(nStatus == status){
             nStatus = nStatus->_nextStatus;
@@ -68,10 +68,10 @@ StatusPtr VDW_StatusLEDTarget::removeStatus(StatusPtr status){
 // display highest priority active status, run blink patterns and count number of blinks, reset active status if number of blinks exceeds set number
 void VDW_StatusLEDTarget::update(){
 
-    StatusPtr aStatus = NULL; // the "active" status
+    LEDStatusPtr aStatus = NULL; // the "active" status
 
     // find the highest priority, active status. list is sorted by priority ==> first active element is highest priority, active element
-    StatusPtr cStatus = _headStatusList;
+    LEDStatusPtr cStatus = _headStatusList;
     while(cStatus != NULL){
         if(cStatus->_active){
             aStatus = cStatus;
@@ -130,7 +130,7 @@ void VDW_StatusLEDTarget::update(){
 
 void VDW_StatusLEDTarget::printStatuses(){
     Serial.printlnf("----------");
-    StatusPtr status = _headStatusList;
+    LEDStatusPtr status = _headStatusList;
     while(status){
         status->printStatus();
         status = status->_nextStatus;

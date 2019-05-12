@@ -32,10 +32,13 @@ enum StatusLED_Speed {
     StatusLED_Speed_Slow = 750,
 };
 
+#ifndef DISABLED_ACTIVE_ENUM
+#define DISABLED_ACTIVE_ENUM
 enum {
     Disabled,
     Active,
 };
+#endif
 
 // forward declare the target LED for reference
 class VDW_StatusLEDTarget;
@@ -93,8 +96,8 @@ class VDW_LEDStatus{
         uint32_t _blinksCompleted; // the number of times the status has blinked since setStatus() was called
         bool _active = false; // active status means the color and blink rate will be displayed if it's highest priority
 
-        typedef VDW_LEDStatus* StatusPtr;
-        StatusPtr _nextStatus;
+        typedef VDW_LEDStatus* LEDStatusPtr;
+        LEDStatusPtr _nextStatus;
 };
 
 #endif

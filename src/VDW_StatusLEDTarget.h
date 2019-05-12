@@ -4,7 +4,7 @@
 #include "Particle.h"
 
 class VDW_LEDStatus;
-typedef VDW_LEDStatus* StatusPtr;
+typedef VDW_LEDStatus* LEDStatusPtr;
 
 inline void digitalWriteParamConverter(uint8_t pin , bool dir){
     digitalWrite(pin, dir);
@@ -35,9 +35,9 @@ class VDW_StatusLEDTarget{
         // make sure all pins are off, pin modes should be setup prior to calling init
         void init();
         
-        StatusPtr addStatus(StatusPtr status);
-        StatusPtr pushBack(StatusPtr status);
-        StatusPtr removeStatus(StatusPtr status);
+        LEDStatusPtr addStatus(LEDStatusPtr status);
+        LEDStatusPtr pushBack(LEDStatusPtr status);
+        LEDStatusPtr removeStatus(LEDStatusPtr status);
 
         // display highest priority active status, run blink patterns and count number of blinks, reset active status if number of blinks exceeds set number
         void update();
@@ -52,8 +52,8 @@ class VDW_StatusLEDTarget{
         bool _externalIO;
         
         // Status List
-        StatusPtr _headStatusList = NULL;
-        StatusPtr _lastActiveStatus = NULL;        
+        LEDStatusPtr _headStatusList = NULL;
+        LEDStatusPtr _lastActiveStatus = NULL;        
 
         // Blink Control
         bool _blinkState = true; // true if LED is on during blink
