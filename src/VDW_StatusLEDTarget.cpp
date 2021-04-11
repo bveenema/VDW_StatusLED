@@ -129,7 +129,7 @@ void VDW_StatusLEDTarget::update(){
 }
 
 void VDW_StatusLEDTarget::printStatuses(){
-    Serial.printlnf("----------");
+    Serial.println("----------");
     LEDStatusPtr status = _headStatusList;
     while(status){
         status->printStatus();

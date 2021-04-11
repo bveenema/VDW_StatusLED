@@ -1,7 +1,13 @@
 #ifndef LED_STATUS_H
 #define LED_STATUS_H
 
-#include "Particle.h"
+
+#if ARDUINO
+    #include <Arduino.h>
+#else
+    #include <Particle.h>
+#endif
+
 
 enum StatusLED_Color {
     StatusLED_Color_OFF, //000 --> not sure why this would every be used, led should be off if all statuses are inactive
@@ -74,14 +80,31 @@ class VDW_LEDStatus{
         bool displayNow();
 
         void printStatus(){
-            Serial.printlnf("Status %d", this);
-            Serial.printlnf("\tActive: %d", _active);
-            Serial.printlnf("\tColor: %d", _color);
-            Serial.printlnf("\tBlink Rate: %d", _blinkRate);
-            Serial.printlnf("\tNum Blinks: %d", _numBlinks);
-            Serial.printlnf("\tBlinks Completed: %d", _blinksCompleted);
-            Serial.printlnf("\tPriority: %d", _priority);
-            Serial.printlnf("\tNext Status: %d", _nextStatus);
+            char buffer[255] = "";
+
+            sprintf(buffer, "Status %u", this);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tActive: %d", _active);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tColor: %lu", _color);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tBlink Rate: %lu", _blinkRate);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tNum Blinks: %lu", _numBlinks);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tBlinks Completed: %lu", _blinksCompleted);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tPriority: %lu", _priority);
+            Serial.println(buffer);
+
+            sprintf(buffer, "\tNext Status: %u", _nextStatus);
+            Serial.println(buffer);
         }
 
     private:

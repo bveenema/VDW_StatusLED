@@ -1,7 +1,11 @@
 #ifndef STATUS_LED_TARGET_H
 #define STATUS_LED_TARGET_H
 
-#include "Particle.h"
+#if ARDUINO
+    #include <Arduino.h>
+#else
+    #include <Particle.h>
+#endif
 
 class VDW_LEDStatus;
 typedef VDW_LEDStatus* LEDStatusPtr;
